@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanishk's Neural Core // Schedulers Command Matrix</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#020617">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=JetBrains+Mono:wght@300;400;500;700&display=swap');
+        
+        :root {
+            --glow-cyan: 0 0 15px rgba(6, 182, 212, 0.4);
+            --glow-indigo: 0 0 15px rgba(99, 102, 241, 0.4);
+            --glow-rose: 0 0 15px rgba(244, 63, 94, 0.4);
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: #020617;
+            color: #cbd5e1;
+            overflow-x: hidden;
+        }
+
+        .heading-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Cyberpunk HUD Glass Panels */
+        .hud-panel {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.7) 100%);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(51, 65, 85, 0.6);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+            position: relative;
+        }
+
+        .hud-panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.4), transparent);
+        }
+
+        /* Matrix terminal inputs */
+        .hud-input {
+            background: rgba(2, 6, 23, 0.8);
+            border: 1px solid rgba(71, 85, 105, 0.8);
+            color: #38bdf8;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .hud-input:focus {
+            border-color: #06b6d4;
+            box-shadow: var(--glow-cyan);
+            outline: none;
+            background: rgba(2, 6, 23, 0.95);
+        }
+
+        .hud-input option {
+            background: #0f172a;
+            color: #38bdf8;
+        }
+
+        /* Custom Scrollbar Terminal Layout */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
+
+        /* Scanning system overlay simulation lines */
+        .scanline {
+            pointer-events: none;
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 255, 0, 0.03));
+            background-size: 100% 4px, 6px 100%;
+            z-index: 999;
+            opacity: 0.4;
+        }
+
+        .quantum-pulse {
+            animation: pulseTracker 2s infinite alternate;
+        }
+        @keyframes pulseTracker {
+            0% { border-color: rgba(244, 63, 94, 0.3); box-shadow: 0 0 10px rgba(244, 63, 94, 0.1); }
+            100% { border-color: rgba(244, 63, 94, 0.8); box-shadow: 0 0 25px rgba(244, 63, 94, 0.4); }
+        }
+
+        .mic-active {
+            animation: micPulse 1s infinite alternate;
+            background-color: rgba(244, 63, 94, 0.3) !important;
+            border-color: #f43f5e !important;
+            color: #f43f5e !important;
+        }
+        @keyframes micPulse {
+            0% { box-shadow: 0 0 5px rgba(244, 63, 94, 0.4); }
+            100% { box-shadow: 0 0 15px rgba(244, 63, 94, 0.8); }
+        }
+
+        #neural-canvas {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -1; pointer-events: none; opacity: 0.18;
+        }
+
+        .crt-flicker { animation: crt 0.15s infinite; }
+        @keyframes crt {
+            0% { opacity: 0.98; } 50% { opacity: 1; } 100% { opacity: 0.99; }
+        }
+
+        .edit-input {
+            background: rgba(2, 6, 23, 0.9);
+            border: 1px solid #06b6d4;
+            color: #38bdf8;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 4px;
+            font-size: 12px;
+            width: 100%;
+        }
+
+        /* Calendar Matrix Specific Overrides */
+        .calendar-day-node {
+            aspect-ratio: 1;
+            transition: all 0.2s ease;
+        }
+        .calendar-day-node:hover {
+            background: rgba(51, 65, 85, 0.4);
+            border-color: #06b6d4;
+        }
+    </style>
+</head>
+<body class="p-3 md:p-6 min-h-screen crt-flicker">
+
+    <div class="scanline"></div>
+    <canvas id="neural-canvas"></canvas>
+
+    <div class="max-w-[1600px] mx-auto space-y-4">
+
+        <header class="hud-panel p-4 flex flex-col sm:flex-row justify-between items-center gap-4 border-slate-700">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-cyan-950/40 border border-cyan-500/40 text-cyan-400 rounded-none relative">
+                    <i data-lucide="activity" class="w-8 h-8"></i>
+                    <span class="absolute -top-1 -right-1 flex h-3 w-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+                    </span>
+                </div>
+                <div>
+                    <h1 class="heading-orbitron text-2xl md:text-3xl font-black tracking-widest text-white">KANISHK_CORE//SYSTEM_V2.0</h1>
+                    <p class="text-[10px] text-cyan-500 uppercase tracking-widest font-bold">Personalized Matrix Core // Deep Work Execution Deck</p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-center gap-3">
+                <div class="flex items-center gap-2 bg-amber-950/40 border border-amber-500/30 px-3 py-2 text-xs text-amber-400 font-bold">
+                    <i data-lucide="zap" class="w-4 h-4 text-amber-500"></i>
+                    <span class="heading-orbitron tracking-wider"><span id="streak-count">1</span>_CYCLE_STREAK</span>
+                </div>
+
+                <button onclick="requestNotificationPermission()" id="bell-btn" class="hud-panel p-2 text-slate-400 hover:text-cyan-400 border-slate-700 transition duration-300 relative" title="Grant Notification Privileges">
+                    <i data-lucide="bell" class="w-4 h-4"></i>
+                    <span id="bell-dot" class="hidden absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-none animate-pulse"></span>
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="hud-panel p-3 border-l-2 border-l-purple-500 border-slate-700">
+                <p class="text-[10px] uppercase font-bold tracking-widest text-slate-400 flex justify-between">HOMEWORK_DEBRIS <i data-lucide="file-minus" class="w-3 h-3 text-purple-400"></i></p>
+                <p id="count-homework" class="heading-orbitron text-3xl font-black text-white mt-1">00</p>
+            </div>
+            <div class="hud-panel p-3 border-l-2 border-l-rose-500 border-slate-700">
+                <p class="text-[10px] uppercase font-bold tracking-widest text-slate-400 flex justify-between">CRITICAL_TESTS <i data-lucide="swatch-book" class="w-3 h-3 text-rose-400"></i></p>
+                <p id="count-test" class="heading-orbitron text-3xl font-black text-white mt-1">00</p>
+            </div>
+            <div class="hud-panel p-3 border-l-2 border-l-cyan-500 border-slate-700">
+                <p class="text-[10px] uppercase font-bold tracking-widest text-slate-400 flex justify-between">STUDY_SPRINTS <i data-lucide="git-commit" class="w-3 h-3 text-cyan-400"></i></p>
+                <p id="count-study" class="heading-orbitron text-3xl font-black text-white mt-1">00</p>
+            </div>
+            <div class="hud-panel p-3 border-l-2 border-l-emerald-500 border-slate-700">
+                <p class="text-[10px] uppercase font-bold tracking-widest text-slate-400 flex justify-between">MATRIX_COMPLETED <i data-lucide="shield-check" class="w-3 h-3 text-emerald-400"></i></p>
+                <p id="count-done" class="heading-orbitron text-3xl font-black text-white mt-1">00</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+            
+            <div class="lg:col-span-4 space-y-4">
+                
+                <div id="radar-panel" class="hud-panel p-4 border-slate-700 flex flex-col">
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-800 mb-3">
+                        <span class="heading-orbitron text-xs font-bold text-rose-400 tracking-widest flex items-center gap-2">
+                            <i data-lucide="radar" class="w-4 h-4"></i> EXAM_PRESSURE_RADAR
+                        </span>
+                    </div>
+
+                    <div id="radar-status-content" class="space-y-3 text-xs font-mono">
+                        <div class="p-3 bg-slate-950 border border-slate-800 text-center text-slate-500 uppercase">
+                            // Analyzing timelines...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hud-panel p-4 border-slate-700">
+                    <span class="heading-orbitron text-xs font-bold text-rose-400 tracking-widest flex items-center gap-2 mb-3">
+                        <i data-lucide="hourglass" class="w-4 h-4 animate-spin"></i> POMODORO_BURST_ENGINE
+                    </span>
+                    <div class="bg-slate-950/90 border border-slate-800 p-4 text-center space-y-3 relative overflow-hidden">
+                        <div id="timer-display" class="heading-orbitron text-5xl font-black tracking-widest text-white text-glow-cyan">25:00</div>
+                        <div class="flex justify-center gap-2 relative z-10 text-xs">
+                            <button id="btn-timer-start" onclick="toggleTimer()" class="px-4 py-2 border border-cyan-500 bg-cyan-950/50 hover:bg-cyan-900 text-cyan-400 font-bold tracking-widest transition">INITIALIZE</button>
+                            <button onclick="resetTimer()" class="px-4 py-2 border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-400 transition">RESET</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hud-panel p-4 border-slate-700">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="heading-orbitron text-xs font-bold text-cyan-400 tracking-widest flex items-center gap-2">
+                            <i data-lucide="calendar-range" class="w-4 h-4"></i> CHRONO_MATRIX_GRID
+                        </span>
+                        <div class="flex items-center gap-2 font-mono text-[10px]">
+                            <button onclick="changeMonth(-1)" class="p-1 hover:text-cyan-400 transition"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></button>
+                            <span id="calendar-month-year-label" class="font-bold text-white uppercase tracking-wider">JUNE 2026</span>
+                            <button onclick="changeMonth(1)" class="p-1 hover:text-cyan-400 transition"><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-950/80 p-2.5 border border-slate-800">
+                        <div class="grid grid-cols-7 gap-1 text-center font-mono text-[9px] text-slate-500 font-bold uppercase mb-1.5 border-b border-slate-900 pb-1">
+                            <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+                        </div>
+                        <div id="calendar-days-container" class="grid grid-cols-7 gap-1 text-center text-[10px] font-mono"></div>
+                    </div>
+                    
+                    <div class="flex flex-wrap items-center justify-center gap-3 mt-2 text-[8px] uppercase tracking-wider font-bold font-mono text-slate-500">
+                        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-purple-500 inline-block"></span> HW</span>
+                        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block"></span> TEST</span>
+                        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-cyan-500 inline-block"></span> STUDY</span>
+                        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block"></span> REMINDER</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="lg:col-span-8 space-y-4">
+                
+                <div class="hud-panel p-4 border-slate-700">
+                    <span class="heading-orbitron text-xs font-bold text-emerald-400 tracking-widest flex items-center gap-2 mb-3">
+                        <i data-lucide="plus" class="w-4 h-4"></i> MANUALLY_INJECT_SCHEDULING_ANOMALY
+                    </span>
+                    <form id="task-form" onsubmit="addTask(event)" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                        <div class="sm:col-span-2 md:col-span-4 relative flex items-center">
+                            <input type="text" id="task-title" required placeholder="Define tracking operational criteria (e.g., Physics Lab Report)..." class="w-full hud-input p-2.5 pr-10 rounded-none">
+                            <button type="button" onclick="startVoiceRecognition('task-title', 'main-mic-btn')" id="main-mic-btn" class="absolute right-2 p-1 text-slate-500 hover:text-cyan-400 transition" title="Inject Entry via Voice Synthesis">
+                                <i data-lucide="mic" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <div>
+                            <select id="task-type" class="w-full hud-input p-2.5 rounded-none">
+                                <option value="study">📖 TOPIC_SPRINT_INTERVAL</option>
+                                <option value="homework">📝 HW_CRITERIA_DEBRIS</option>
+                                <option value="test">🏆 EXAM_VECTOR_ANOMALY</option>
+                                <option value="reminder">🔔 SYSTEM_REMINDER_LOG</option>
+                            </select>
+                        </div>
+                        <div>
+                            <select id="task-priority" class="w-full hud-input p-2.5 rounded-none">
+                                <option value="medium">⚡ LEVEL_02_MEDIUM</option>
+                                <option value="high">🔥 LEVEL_03_CRITICAL</option>
+                                <option value="urgent">🚨 LEVEL_04_MAX_URGENT</option>
+                                <option value="low">🌱 LEVEL_01_DEGRADED</option>
+                            </select>
+                        </div>
+                        <div>
+                            <input type="date" id="task-date" required class="w-full hud-input p-2.5 rounded-none">
+                        </div>
+                        <div class="sm:col-span-2 md:col-span-4">
+                            <button type="submit" class="w-full py-2.5 bg-emerald-950 hover:bg-emerald-900 border border-emerald-500 text-emerald-400 font-bold uppercase tracking-widest transition">
+                                COMMIT_LOG_ENTRY
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="flex items-center justify-between gap-2 border-b border-slate-800 pb-px font-mono text-xs">
+                    <div class="flex gap-1 overflow-x-auto">
+                        <button onclick="switchTab('all')" id="tab-all" class="px-4 py-2 text-cyan-400 border-t border-x border-cyan-500 bg-slate-900/60 font-bold">ALL_ENTRIES</button>
+                        <button onclick="switchTab('homework')" id="tab-homework" class="px-4 py-2 text-slate-400 border-b border-transparent hover:text-white">HOMEWORK</button>
+                        <button onclick="switchTab('test')" id="tab-test" class="px-4 py-2 text-slate-400 border-b border-transparent hover:text-white">TESTS</button>
+                        <button onclick="switchTab('study')" id="tab-study" class="px-4 py-2 text-slate-400 border-b border-transparent hover:text-white">STUDY</button>
+                        <button onclick="switchTab('done')" id="tab-done" class="px-4 py-2 text-slate-400 border-b border-transparent hover:text-white">ARCHIVED</button>
+                    </div>
+                </div>
+
+                <div id="task-list" class="space-y-2 min-h-[300px]"></div>
+
+            </div>
+        </div>
+    </div>
+
+    <div id="reminder-panel" class="hidden fixed bottom-4 right-4 z-50 space-y-2 max-w-sm w-full font-mono text-xs"></div>
+
+    <audio id="alarm-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-84.wav" preload="auto"></audio>
+
+<script>
+// ═══════════════════════════════════════════════
+//  CORE SYSTEM STATE CONTROLLER
+// ═══════════════════════════════════════════════
+let tasks = JSON.parse(localStorage.getItem('kanishk_tasks')) || [
+    { id: 1, title: 'Organic Chemistry Reaction Pathways Mechanics', type: 'study', priority: 'high', datetime: new Date(Date.now() + 86400000).toISOString().slice(0,10) + 'T12:00', completed:false, resources: 'Textbook Chapter 4, Page 112' },
+    { id: 2, title: 'Electromagnetism Lorentz Velocity Equations', type: 'study', priority: 'urgent', datetime: new Date(Date.now() + 172800000).toISOString().slice(0,10) + 'T09:00', completed:false, resources: '' },
+    { id: 3, title: 'Organic Chemistry Term Examination 01', type: 'test', priority: 'urgent', datetime: new Date(Date.now() + 172800000 * 0.8).toISOString().slice(0,10) + 'T09:00', completed:false, resources: '' }
+];
+
+let activeTab = 'all';
+let timerInterval = null;
+let timerTimeLeft = 25 * 60;
+let isTimerRunning = false;
+let firedReminders = JSON.parse(localStorage.getItem('kanishk_fired_reminders') || '[]');
+
+// State variable to manage the user's active view month in the calendar matrix
+let currentCalendarDate = new Date();
+
+// ═══════════════════════════════════════════════
+//  UNIVERSAL AUDIO TRANSCRIPTION INTERFACES
+// ═══════════════════════════════════════════════
+function startVoiceRecognition(targetInputId, micButtonId) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("CRITICAL ERROR: Neural System voice matrix processing node not supported on this browser subsystem.");
+        return;
+    }
+
+    const rec = new SpeechRecognition();
+    rec.lang = 'en-US';
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+
+    const btn = document.getElementById(micButtonId);
+    const inputField = document.getElementById(targetInputId);
+
+    if (!btn || !inputField) return;
+
+    btn.classList.add('mic-active');
+
+    rec.onresult = (event) => {
+        const textTranscript = event.results[0][0].transcript;
+        if (inputField.value.trim() !== "") {
+            inputField.value = inputField.value.trim() + " " + textTranscript;
+        } else {
+            inputField.value = textTranscript;
+        }
+    };
+
+    rec.onend = () => { btn.classList.remove('mic-active'); };
+    rec.start();
+}
+
+// ═══════════════════════════════════════════════
+//  DYNAMIC BG CANVAS GENERATOR
+// ═══════════════════════════════════════════════
+function initNeuralBackground() {
+    const canvas = document.getElementById('neural-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let points = [];
+    const maxPoints = 55;
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    for (let i = 0; i < maxPoints; i++) {
+        points.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.7,
+            vy: (Math.random() - 0.5) * 0.7
+        });
+    }
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.05)';
+        ctx.fillStyle = 'rgba(34, 211, 238, 0.2)';
+
+        for (let i = 0; i < maxPoints; i++) {
+            let p = points[i];
+            p.x += p.vx; p.y += p.vy;
+
+            if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+            if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+            ctx.fillRect(p.x - 1.5, p.y - 1.5, 3, 3);
+
+            for (let j = i + 1; j < maxPoints; j++) {
+                let p2 = points[j];
+                let dist = Math.hypot(p.x - p2.x, p.y - p2.y);
+                if (dist < 140) {
+                    ctx.lineWidth = 1 - (dist / 140);
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+                }
+            }
+        }
+        requestAnimationFrame(animate);
+    }
+    animate();
+}
+
+// ═══════════════════════════════════════════════
+//  INITIALIZATION LOOP
+// ═══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+    initNeuralBackground();
+    renderApp();
+    updateStreak();
+    
+    setInterval(() => {
+        const now = Date.now();
+        tasks.forEach(task => {
+            if (task.completed) return;
+            const dueTime = new Date(task.datetime).getTime();
+            const diff = dueTime - now;
+
+            if (diff > 0 && diff <= 24*60*60*1000 && diff > 23.9*60*60*1000) triggerReminder(task, '24 HOURS');
+            if (diff > 0 && diff <= 60*60*1000 && diff > 59*60*1000) triggerReminder(task, '1 HOUR');
+            if (Math.abs(diff) <= 15000) triggerReminder(task, 'START VECTOR NOW');
+        });
+    }, 30000);
+});
+
+// ═══════════════════════════════════════════════
+//  TRACKER SCHEDULER SYSTEM METHODS
+// ═══════════════════════════════════════════════
+function save() {
+    localStorage.setItem('kanishk_tasks', JSON.stringify(tasks));
+    renderApp();
+}
+
+function addTask(e) {
+    e.preventDefault();
+    const title = document.getElementById('task-title').value.trim();
+    const type = document.getElementById('task-type').value;
+    const priority = document.getElementById('task-priority').value;
+    const dateVal = document.getElementById('task-date').value; // format: "YYYY-MM-DD"
+
+    if (!title || !dateVal) return;
+    
+    // Split text fields down directly to raw numbers to force local timezone calculation
+    const dateParts = dateVal.split('-');
+    const year = parseInt(dateParts[0], 10);
+    const month = parseInt(dateParts[1], 10) - 1; // JS months are index 0-11
+    const day = parseInt(dateParts[2], 10);
+
+    // Tests default to 09:00 local time, everything else to 23:59 local time
+    const hours = type === 'test' ? 9 : 23;
+    const minutes = type === 'test' ? 0 : 59;
+
+    // Instantiating with pure numbers ensures the client environment builds it locally
+    const localCalculatedDate = new Date(year, month, day, hours, minutes, 0, 0);
+
+    tasks.push({
+        id: Date.now(),
+        title,
+        type,
+        priority,
+        datetime: localCalculatedDate.toISOString(), // Standardized string safe for system checks
+        completed: false,
+        resources: ''
+    });
+
+    save();
+    document.getElementById('task-title').value = '';
+    document.getElementById('task-date').value = '';
+}
+
+function toggleComplete(id) {
+    const t = tasks.find(t => t.id === id);
+    if (t) { t.completed = !t.completed; save(); }
+}
+
+function saveResources(id) {
+    const t = tasks.find(t => t.id === id);
+    if (t) {
+        t.resources = document.getElementById(`resource-in-${id}`).value.trim();
+        save();
+    }
+}
+
+function toggleResourcePanel(id) {
+    const el = document.getElementById(`resource-panel-${id}`);
+    if (el) el.classList.toggle('hidden');
+}
+
+function deleteTask(id) {
+    if (!confirm('PURGE DATA METRIC RECORD FILE?')) return;
+    tasks = tasks.filter(t => t.id !== id);
+    save();
+}
+
+function startEdit(id) {
+    const t = tasks.find(x => x.id === id);
+    if (!t) return;
+
+    document.getElementById(`title-display-${id}`).innerHTML = `
+        <div class="relative flex items-center mt-1">
+            <input id="edit-title-${id}" class="edit-input pr-8" value="${escHtml(t.title)}">
+            <button type="button" onclick="startVoiceRecognition('edit-title-${id}', 'edit-mic-${id}')" id="edit-mic-${id}" class="absolute right-1 text-slate-500 hover:text-cyan-400 p-0.5">
+                <i data-lucide="mic" class="w-3.5 h-3.5"></i>
+            </button>
+        </div>
+    `;
+    document.getElementById(`meta-display-${id}`).classList.add('hidden');
+    document.getElementById(`edit-controls-${id}`).classList.remove('hidden');
+    document.getElementById(`edit-trigger-${id}`).classList.add('hidden');
+    lucide.createIcons();
+}
+
+function cancelEdit(id) { renderApp(); }
+function commitEdit(id) {
+    const t = tasks.find(x => x.id === id);
+    if (!t) return;
+    const nt = document.getElementById('edit-title-' + id).value.trim();
+    if (nt) t.title = nt;
+    save();
+}
+
+// ═══════════════════════════════════════════════
+//  CHRONO MATRIX MONTHLY CALENDAR RENDERING ENGINE
+// ═══════════════════════════════════════════════
+function renderMonthlyCalendar() {
+    const monthLabel = document.getElementById('calendar-month-year-label');
+    const daysContainer = document.getElementById('calendar-days-container');
+    if (!daysContainer || !monthLabel) return;
+
+    daysContainer.innerHTML = '';
+
+    const year = currentCalendarDate.getFullYear();
+    const month = currentCalendarDate.getMonth();
+
+    // Set month and year title label text
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    monthLabel.innerText = `${monthNames[month]} ${year}`;
+
+    // Get parameters for the month layout mapping
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // Generate padding spaces for empty offset days
+    for (let i = 0; i < firstDayIndex; i++) {
+        daysContainer.insertAdjacentHTML('beforeend', `<div class="p-1 opacity-0"></div>`);
+    }
+
+    // Populate active date nodes
+    const todayStr = new Date().toDateString();
+    
+    for (let day = 1; day <= totalDaysInMonth; day++) {
+        const loopDate = new Date(year, month, day);
+        
+        // Match day calendars safely using exact localized day signatures instead of string slicing variables
+        const matchingTasks = tasks.filter(t => {
+            if (t.completed) return false;
+            const taskDate = new Date(t.datetime);
+            return taskDate.getFullYear() === year && taskDate.getMonth() === month && taskDate.getDate() === day;
+        });
+        
+        let hasHw = matchingTasks.some(t => t.type === 'homework');
+        let hasTest = matchingTasks.some(t => t.type === 'test');
+        let hasStudy = matchingTasks.some(t => t.type === 'study');
+        let hasReminder = matchingTasks.some(t => t.type === 'reminder');
+
+        // Create colored indicators payload strings
+        let dotsPayload = '';
+        if (hasHw) dotsPayload += `<span class="w-1 h-1 rounded-full bg-purple-500"></span>`;
+        if (hasTest) dotsPayload += `<span class="w-1 h-1 rounded-full bg-rose-500"></span>`;
+        if (hasStudy) dotsPayload += `<span class="w-1 h-1 rounded-full bg-cyan-500"></span>`;
+        if (hasReminder) dotsPayload += `<span class="w-1 h-1 rounded-full bg-amber-500"></span>`;
+
+        // Highlight block formatting if today
+        const isCurrentSystemDay = loopDate.toDateString() === todayStr;
+        const cellBorderClass = isCurrentSystemDay 
+            ? 'border-cyan-500 bg-cyan-950/40 text-cyan-400 font-bold' 
+            : 'border-slate-800 text-slate-400 bg-slate-950/30';
+
+        daysContainer.insertAdjacentHTML('beforeend', `
+            <div class="calendar-day-node border ${cellBorderClass} p-1 flex flex-col justify-between items-center relative cursor-default" title="Date: ${loopDate.toLocaleDateString()} // Active items: ${matchingTasks.length}">
+                <span>${day}</span>
+                <div class="flex gap-0.5 justify-center mt-0.5 h-1 w-full max-w-[14px]">
+                    ${dotsPayload}
+                </div>
+            </div>
+        `);
+    }
+}
+
+function changeMonth(direction) {
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() + direction);
+    renderMonthlyCalendar();
+}
+
+// ═══════════════════════════════════════════════
+//  CORE LAYOUT COMPILER ENGINE & RADAR SYSTEMS
+// ═══════════════════════════════════════════════
+function calculatePressureRadar() {
+    const radarContainer = document.getElementById('radar-status-content');
+    const now = Date.now();
+    
+    const activeTests = tasks.filter(t => !t.completed && t.type === 'test');
+    const criticalThreshold = 3 * 24 * 60 * 60 * 1000; // 3 days
+
+    let urgentExamsFound = 0;
+    let htmlOutput = '';
+
+    activeTests.forEach(test => {
+        const testTime = new Date(test.datetime).getTime();
+        const timeUntilTest = testTime - now;
+
+        if (timeUntilTest > 0 && timeUntilTest <= criticalThreshold) {
+            urgentExamsFound++;
+            
+            const subjectKeyword = test.title.trim().split(' ')[0].toLowerCase();
+            const subjectPendingCount = tasks.filter(t => {
+                if (t.completed || t.id === test.id) return false;
+                return t.title.toLowerCase().includes(subjectKeyword);
+            }).length;
+
+            htmlOutput += `
+                <div class="p-3 bg-rose-950/20 border border-rose-500 rounded-none space-y-1 quantum-pulse">
+                    <div class="flex items-center justify-between font-bold text-rose-400">
+                        <span>🚨 EXAM PREP CRISIS</span>
+                        <span class="text-[9px] bg-rose-900 text-white px-1 font-mono">DANGER_LEVEL_04</span>
+                    </div>
+                    <p class="text-white text-[11px] font-bold">${escHtml(test.title.toUpperCase())}</p>
+                    <p class="text-[10px] text-slate-400 uppercase">// Less than 72 hours remaining with ${subjectPendingCount} pending task(s) found for this subject code node.</p>
+                </div>
+            `;
+        }
+    });
+
+    if (urgentExamsFound === 0) {
+        radarContainer.innerHTML = `
+            <div class="p-3 bg-slate-950 border border-slate-800 text-center text-emerald-400 flex flex-col items-center justify-center gap-1">
+                <i data-lucide="shield-check" class="w-5 h-5"></i>
+                <span class="uppercase tracking-wider text-[11px] font-bold">RADAR INFRASTRUCTURE CLEAR</span>
+                <p class="text-[9px] text-slate-500 uppercase font-normal">// No critical test thresholds breached inside 3 days.</p>
+            </div>
+        `;
+    } else { radarContainer.innerHTML = htmlOutput; }
+    lucide.createIcons();
+}
+
+function renderApp() {
+    const container = document.getElementById('task-list');
+    container.innerHTML = '';
+
+    let hw = 0, tst = 0, sty = 0, comp = 0;
+    tasks.forEach(t => {
+        if (t.completed) comp++;
+        else {
+            if (t.type === 'homework') hw++;
+            if (t.type === 'test') tst++;
+            if (t.type === 'study') sty++;
+        }
+    });
+
+    document.getElementById('count-homework').innerText = hw.toString().padStart(2, '0');
+    document.getElementById('count-test').innerText = tst.toString().padStart(2, '0');
+    document.getElementById('count-study').innerText = sty.toString().padStart(2, '0');
+    document.getElementById('count-done').innerText = comp.toString().padStart(2, '0');
+
+    let filtered = tasks.filter(t => {
+        if (activeTab === 'all') return !t.completed;
+        if (activeTab === 'done') return t.completed;
+        return !t.completed && t.type === activeTab;
+    });
+
+    filtered.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+
+    if (!filtered.length) {
+        container.innerHTML = `
+            <div class="text-center py-12 border border-dashed border-slate-800 text-xs text-slate-600 uppercase font-mono">
+                // NO TARGET MATRIX DETECTED IN REGISTRY WINDOW
+            </div>`;
+        return;
+    }
+
+    filtered.forEach(task => {
+        const dt = new Date(task.datetime);
+        const formatString = dt.toLocaleDateString([], {month:'short', day:'numeric'}) + ' // ' + dt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+        let priorityStyle = 'text-slate-400 bg-slate-900 border-slate-800';
+        if (task.priority === 'urgent') priorityStyle = 'text-rose-400 bg-rose-950/30 border-rose-900/60 font-bold';
+        if (task.priority === 'high') priorityStyle = 'text-amber-400 bg-amber-950/30 border-amber-900/60';
+
+        const resourceText = task.resources || '';
+        const resourceIndicator = task.resources ? 'text-cyan-400 border-cyan-800' : 'text-slate-500 border-slate-800';
+
+        container.insertAdjacentHTML('beforeend', `
+            <div class="hud-panel p-3 border-slate-800 flex flex-col gap-2 bg-slate-950/40 hover:bg-slate-900/50 transition duration-200">
+                <div class="flex items-center justify-between gap-4 w-full">
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                        <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleComplete(${task.id})"
+                               class="w-4 h-4 rounded-none bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0 accent-cyan-500 cursor-pointer">
+                        <div class="min-w-0 flex-1 space-y-0.5">
+                            <div id="title-display-${task.id}">
+                                <p class="text-xs font-medium text-slate-200 truncate ${task.completed ? 'line-through text-slate-600' : ''}">
+                                    [${task.type.toUpperCase()}] ${escHtml(task.title)}
+                                </p>
+                            </div>
+                            <div id="meta-display-${task.id}" class="flex flex-wrap items-center gap-2 text-[9px] font-mono text-slate-500">
+                                <span class="border px-1.5 py-px uppercase font-bold tracking-widest ${priorityStyle}">${task.priority}</span>
+                                <span class="flex items-center gap-1 text-slate-400"><i data-lucide="calendar" class="w-3 h-3 text-cyan-500"></i> ${formatString}</span>
+                                ${!task.completed ? `
+                                <button onclick="toggleResourcePanel(${task.id})" class="ml-2 px-1 border ${resourceIndicator} text-[9px] flex items-center gap-1 hover:text-white transition">
+                                    <i data-lucide="paperclip" class="w-2.5 h-2.5"></i> STUDY_RESOURCES
+                                </button>
+                                ` : ''}
+                            </div>
+                            <div id="edit-controls-${task.id}" class="hidden flex gap-2 pt-1">
+                                <button onclick="commitEdit(${task.id})" class="text-[10px] text-emerald-400 font-bold border border-emerald-900 px-2 py-0.5 bg-emerald-950/30">SAVE</button>
+                                <button onclick="cancelEdit(${task.id})" class="text-[10px] text-slate-400 font-bold border border-slate-800 px-2 py-0.5 bg-slate-900">CANCEL</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="edit-trigger-${task.id}" onclick="startEdit(${task.id})" class="text-slate-600 hover:text-cyan-400 transition p-1">
+                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button onclick="deleteTask(${task.id})" class="text-slate-600 hover:text-rose-400 transition p-1">
+                            <i data-lucide="crosshair" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="resource-panel-${task.id}" class="hidden p-2 bg-slate-950 border border-slate-800 flex flex-col gap-2">
+                    <div class="flex items-center gap-2">
+                        <div class="relative flex items-center flex-1">
+                            <input id="resource-in-${task.id}" type="text" placeholder="Add links, drive files, or textbook page numbers..." value="${escHtml(resourceText)}" class="w-full bg-slate-900 border border-slate-800 p-1 pr-8 text-cyan-400 text-[11px] font-mono">
+                            <button type="button" onclick="startVoiceRecognition('resource-in-${task.id}', 'mic-res-${task.id}')" id="mic-res-${task.id}" class="absolute right-2 text-slate-500 hover:text-cyan-400 p-0.5">
+                                <i data-lucide="mic" class="w-3 h-3"></i>
+                            </button>
+                        </div>
+                        <button onclick="saveResources(${task.id})" class="px-2 py-1 bg-cyan-950 border border-cyan-500 text-cyan-400 text-[10px] font-bold uppercase">SAVE</button>
+                    </div>
+                </div>
+            </div>
+        `);
+    });
+    lucide.createIcons();
+    calculatePressureRadar();
+    renderMonthlyCalendar();
+}
+
+// ═══════════════════════════════════════════════
+//  TAB MENU SWITCH ACTIVATORS
+// ═══════════════════════════════════════════════
+function switchTab(tabId) {
+    activeTab = tabId;
+    ['all','homework','test','study','done'].forEach(id => {
+        const el = document.getElementById('tab-'+id);
+        if (id === tabId) {
+            el.className = 'px-4 py-2 text-cyan-400 border-t border-x border-cyan-500 bg-slate-900/60 font-bold';
+        } else {
+            el.className = 'px-4 py-2 text-slate-400 border-b border-transparent hover:text-white transition';
+        }
+    });
+    renderApp();
+}
+
+// ═══════════════════════════════════════════════
+//  BURST ENGINE ATOMIC TIMEKEEPERS
+// ═══════════════════════════════════════════════
+function toggleTimer() {
+    const btn = document.getElementById('btn-timer-start');
+    if (isTimerRunning) {
+        clearInterval(timerInterval);
+        isTimerRunning = false;
+        btn.innerText = 'RESUME';
+    } else {
+        isTimerRunning = true;
+        btn.innerText = 'INTERRUPT';
+        timerInterval = setInterval(() => {
+            timerTimeLeft--;
+            const min = Math.floor(timerTimeLeft / 60).toString().padStart(2, '0');
+            const sec = (timerTimeLeft % 60).toString().padStart(2, '0');
+            document.getElementById('timer-display').innerText = `${min}:${sec}`;
+
+            if (timerTimeLeft <= 0) {
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+                document.getElementById('alarm-sound').play().catch(()=>{});
+                alert('CHRONO OVERFLOW INTERRUPT. FOCUS BURST ACCOMPLISHED.');
+                resetTimer();
+            }
+        }, 1000);
+    }
+}
+
+function resetTimer() {
+    clearInterval(timerInterval);
+    isTimerRunning = false;
+    timerTimeLeft = 25 * 60;
+    document.getElementById('btn-timer-start').innerText = 'INITIALIZE';
+    document.getElementById('timer-display').innerText = '25:00';
+}
+
+function updateStreak() {
+    const today = new Date().toDateString();
+    const lastVisit = localStorage.getItem('last_visit');
+    let streak = parseInt(localStorage.getItem('streak') || '1');
+    if (lastVisit !== today) {
+        if (localStorage.getItem('last_visit') === new Date(Date.now() - 86400000).toDateString()) streak++;
+        else streak = 1;
+        localStorage.setItem('streak', streak);
+        localStorage.setItem('last_visit', today);
+    }
+    document.getElementById('streak-count').innerText = streak;
+}
+
+function requestNotificationPermission() {
+    if (!('Notification' in window)) return;
+    Notification.requestPermission().then(p => {
+        if (p === 'granted') document.getElementById('bell-dot').classList.add('hidden');
+    });
+}
+
+function triggerReminder(task, flag) {
+    const key = `${task.id}_${flag}`;
+    if (firedReminders.includes(key)) return;
+    firedReminders.push(key);
+    localStorage.setItem('kanishk_fired_reminders', JSON.stringify(firedReminders));
+
+    const panel = document.getElementById('reminder-panel');
+    panel.classList.remove('hidden');
+    const toast = document.createElement('div');
+    toast.className = 'hud-panel p-3 border-cyan-500 text-cyan-400 font-bold tracking-wider space-y-1 quantum-pulse animate-bounce';
+    toast.innerHTML = `
+        <p class="text-white">// CRITICAL TARGET VECTOR WARNING:</p>
+        <p class="text-[11px] font-normal text-slate-300">Anomalous Target "[ ${task.title.toUpperCase()} ]" due parameters hit window: ${flag}</p>
+    `;
+    panel.appendChild(toast);
+    setTimeout(() => toast.remove(), 10000);
+    
+    document.getElementById('bell-dot').classList.remove('hidden');
+
+    if (Notification.permission === 'granted') {
+        new Notification("Command Matrix Core", { body: `Target "${task.title}" flag point: ${flag}` });
+    }
+
+    if (flag === 'START VECTOR NOW') document.getElementById('alarm-sound').play().catch(()=>{});
+}
+
+// Global utility filter escape characters
+function escHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+</script>
+</body>
+</html>
